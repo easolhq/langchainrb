@@ -22,13 +22,25 @@ module Langchain
           )
             Langchain.logger.warn "WARNING: `parallel_tool_calls:` is not supported by Google Gemini currently"
 
-            params = {messages: messages}
+            params = {messages: flatten_sequential_functions(messages)}
             if tools.any?
               params[:tools] = build_tools(tools)
               params[:system] = instructions if instructions
               params[:tool_choice] = build_tool_config(tool_choice)
             end
             params
+          end
+
+          def flatten_sequential_functions(messages)
+            messages.each_with_object([]) do |message, result|
+              if message[:role] != "function" ||
+                  result.empty? ||
+                  result.last[:role] != "function"
+                result << message
+              else
+                result.last[:parts].concat(message[:parts])
+              end
+            end
           end
 
           # Build a Google Gemini message
